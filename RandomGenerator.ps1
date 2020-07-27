@@ -28,7 +28,7 @@ function Time-Killer
     $counter = 0
     while ($counter -lt $length)
     {
-        [double]$source = ((New-TimeSpan -Start (Get-Date "01/01/1970") -End (Get-Date)).TotalSeconds) * 100000
+        [decimal]$source = ((New-TimeSpan -Start (Get-Date "01/01/1970") -End (Get-Date)).TotalSeconds) * 100000
         if (($source % 7) -eq 0)
         {
             $counter++
@@ -39,23 +39,34 @@ function Time-Killer
 <#
 Here is where most of the work is done. We get an initial Timestamp value, then run the Time-Killer function to add a variable
 length buffer before pulling a second Timestamp value. Next we add the two Timestamps together, then convert all three values
-to strings for manipulation. We combine the last 4 digits of each number to create a new, 4th number of 12 digits (this can be
+to strings for manipulation. We repeat this again, running Time-Killer once more to get a third Timestamp.
+We combine the last several digits of each number to create a new number of 20 digits (this can be
 changed in the $comboString settings if you want to generate even larger numbers, but be wary of this as PowerShell natively
-doesn't handle super big numbers well). After getting the 4th number we reverse the order of the digits with the Reverse-Value
+doesn't handle super big numbers well). After creating the $comboString number we reverse the order of the digits with the Reverse-Value
 function, and finally extract the last few digits to create a number that is the same length as the difference between the input
 boundary values given by the user. This number is returned to the Get-Randoms function that called for it.
+
+NOTE: Increasing the number of digits extracted from each source value for creating $comboString is NOT recommended.
+Doing so results in issues generating numbers with only a couple of digits. If larger numbers aare needed, the best way
+to achieve this is to add another .Substring() into the chain (add in a Time-Killer runtime above, grab the Timestamp
+in a new vaariable, convert that to a string, and pull the last 4 from that).
 #>
 function Generate-Number
 {
     param($length)
-    [double]$num1 = ((New-TimeSpan -Start (Get-Date "01/01/1970") -End (Get-Date)).TotalSeconds) * 100000
+    [decimal]$num1 = ((New-TimeSpan -Start (Get-Date "01/01/1970") -End (Get-Date)).TotalSeconds) * 100000
     Time-Killer -length $length
-    [double]$num2 = ((New-TimeSpan -Start (Get-Date "01/01/1970") -End (Get-Date)).TotalSeconds) * 100000
-    [double]$sum1 = $num1 + $num2
+    [decimal]$num2 = ((New-TimeSpan -Start (Get-Date "01/01/1970") -End (Get-Date)).TotalSeconds) * 100000
+    [decimal]$sum1 = $num1 + $num2
+    Time-Killer -length $length
+    [decimal]$num3 = ((New-TimeSpan -Start (Get-Date "01/01/1970") -End (Get-Date)).TotalSeconds) * 100000
+    [decimal]$bigNum = $num1 + $num2 + $num3 + $sum1
     [string]$string1 = $num1
     [string]$string2 = $num2
     [string]$string3 = $sum1
-    [string]$comboString = $string1.Substring($string1.get_Length()-4) + $string2.Substring($string2.get_Length()-4) + $string3.Substring($string3.get_Length()-4)
+    [string]$string4 = $num3
+    [string]$string5 = $bigNum
+    [string]$comboString = $string1.Substring($string1.get_Length()-4) + $string2.Substring($string2.get_Length()-4) + $string5.Substring($string5.get_Length()-4) + $string3.Substring($string3.get_Length()-4) + $string4.Substring($string4.get_Length()-4)
     [string]$sumString = Reverse-Value -original $comboString
     [string]$sameLength = $sumString.Substring($sumString.get_Length()-$length)
     $sameLength
@@ -85,9 +96,9 @@ for larger numbers, otherwise they tend to group together with similar beginning
 #>
 function Get-Randoms
 {
-    param([int]$lowerBound, [int]$upperBound)
-    [int]$boundRange = $upperBound - $lowerBound
-    [int]$diffLength = $boundRange | measure-object -character | select -ExpandProperty characters
+    param([decimal]$lowerBound, [decimal]$upperBound)
+    [decimal]$boundRange = $upperBound - $lowerBound
+    [decimal]$diffLength = $boundRange | measure-object -character | select -ExpandProperty characters
     [string]$number = Generate-Number -length $diffLength
     while ($number -gt $boundRange)
     {
@@ -109,9 +120,9 @@ function Get-Randoms
 Ask the user for a minimum and maximum boundary on the range of numbers to select from, and how many numbers (n) to generate.
 The 'for' loop will run the Get-Randoms function n number of times
 #>
-[int]$rangeMin = Read-Host "Please enter the minimum number for generating a random number: "
-[int]$rangeMax = Read-Host "Please enter the maximum number for generating a random number: "
-[int]$runtime = Read-Host "How many numbers would you like to generate within this range?"
+[decimal]$rangeMin = Read-Host "Please enter the minimum number for generating a random number: "
+[decimal]$rangeMax = Read-Host "Please enter the maximum number for generating a random number: "
+[decimal]$runtime = Read-Host "How many numbers would you like to generate within this range?"
 for ($i = 0; $i -lt $runtime; $i++)
 {
     Get-Randoms -lowerBound $rangeMin -upperBound $rangeMax

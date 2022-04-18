@@ -7,7 +7,7 @@ $inactiveDate = (Get-Date).AddDays(-30).Date
 $allServers = Get-ADComputer -Filter * -Properties *
 $allServers = $allServers | Sort
 
-#Creatign the arrays to split the accounts into based on whether they are considered active or inactive
+#Creating the arrays to split the accounts into based on whether they are considered active or inactive
 $activeServers = @()
 $inactiveServers = @()
 
